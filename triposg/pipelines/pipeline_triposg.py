@@ -194,11 +194,34 @@ class TripoSGPipeline(DiffusionPipeline, TransformerDiffusionMixin):
         flash_octree_depth: int = 9,
         use_flash_decoder: bool = True,
         return_dict: bool = True,
+        # 新增多视角参数 testBegin
+        multiview_embeddings: Optional[torch.Tensor] = None,
+        use_multiview: bool = False,
+        # 新增多视角参数 testEnd
     ):
         # 1. Define call parameters
         self._guidance_scale = guidance_scale
         self._attention_kwargs = attention_kwargs
-
+        
+        # 新增：多视角处理逻辑 testBegin
+        if use_multiview and multiview_embeddings is not None:
+            # 使用多视角融合特征
+            image_embeds = multiview_embeddings
+            uncond_image_embeds = torch.zeros_like(image_embeds)
+        else:
+            # 原有单视角处理逻辑
+            if isinstance(image, list):
+                batch_size = len(image)
+            else:
+                batch_size = 1
+                
+            num_images_per_prompt = batch_size * num_shapes_per_prompt
+            
+            # 编码图像特征
+            image_embeds, uncond_image_embeds = self.encode_image(
+                image, device=self.device, num_images_per_prompt=num_images_per_prompt
+            )
+        # 新增：多视角处理逻辑 testEnd
         # 2. Define call parameters
         if isinstance(image, PIL.Image.Image):
             batch_size = 1
@@ -321,4 +344,3 @@ class TripoSGPipeline(DiffusionPipeline, TransformerDiffusionMixin):
             return (output, meshes)
 
         return TripoSGPipelineOutput(samples=output, meshes=meshes)
-

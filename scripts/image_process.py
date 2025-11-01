@@ -102,7 +102,7 @@ def load_image(img_path, bg_color=None, rmbg_net=None, padding_ratio=0.1):
 
         _, alpha = cv2.threshold(alpha, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         labeled_alpha = label(alpha)
-        cleaned_alpha = remove_small_objects(labeled_alpha, min_size=200)
+        cleaned_alpha = remove_small_objects(labeled_alpha>0, min_size=200)
         cleaned_alpha = (cleaned_alpha > 0).astype(np.uint8)
         alpha = cleaned_alpha * 255
         alpha_gpu = torch.from_numpy(cleaned_alpha).cuda().float().unsqueeze(0)
