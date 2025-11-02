@@ -256,7 +256,7 @@ def extract_near_surface_volume_fn(input_tensor: torch.Tensor, alpha: float):
 
         # Apply slicing and restore dimensions
         padded = padded.squeeze(0).squeeze(0)
-        sliced = padded[slice_dims]
+        sliced = padded[tuple(slice_dims)]
         return sliced
 
     # Get neighbors in all directions

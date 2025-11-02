@@ -206,41 +206,43 @@ class TripoSGPipeline(DiffusionPipeline, TransformerDiffusionMixin):
         # 新增：多视角处理逻辑 testBegin
         if use_multiview and multiview_embeddings is not None:
             # 使用多视角融合特征
+            batch_size = 1  # 多视角生成固定为batch_size=1
+            device = self._execution_device
             image_embeds = multiview_embeddings
+            
+            # 新增：确保数据类型匹配 testBegin
+            # 使用与image_embeds相同的数据类型创建uncond_image_embeds
             uncond_image_embeds = torch.zeros_like(image_embeds)
+            # 新增：确保数据类型匹配 testEnd
         else:
             # 原有单视角处理逻辑
-            if isinstance(image, list):
-                batch_size = len(image)
-            else:
+            # 2. Define call parameters
+            if isinstance(image, PIL.Image.Image):
                 batch_size = 1
-                
-            num_images_per_prompt = batch_size * num_shapes_per_prompt
-            
-            # 编码图像特征
+            elif isinstance(image, list):
+                batch_size = len(image)
+            elif isinstance(image, torch.Tensor):
+                batch_size = image.shape[0]
+            else:
+                raise ValueError("Invalid input type for image")
+
+            device = self._execution_device
+
+            # 3. Encode condition
             image_embeds, uncond_image_embeds = self.encode_image(
-                image, device=self.device, num_images_per_prompt=num_images_per_prompt
+                image, device, num_shapes_per_prompt
             )
         # 新增：多视角处理逻辑 testEnd
-        # 2. Define call parameters
-        if isinstance(image, PIL.Image.Image):
-            batch_size = 1
-        elif isinstance(image, list):
-            batch_size = len(image)
-        elif isinstance(image, torch.Tensor):
-            batch_size = image.shape[0]
-        else:
-            raise ValueError("Invalid input type for image")
 
-        device = self._execution_device
+        # 删除：重复的条件编码逻辑 testBegin
+        # if self.do_classifier_free_guidance:
+        #     image_embeds = torch.cat([negative_image_embeds, image_embeds], dim=0)
+        # 删除：重复的条件编码逻辑 testEnd
 
-        # 3. Encode condition
-        image_embeds, negative_image_embeds = self.encode_image(
-            image, device, num_shapes_per_prompt
-        )
-
+        # 新增：统一的条件编码处理 testBegin
         if self.do_classifier_free_guidance:
-            image_embeds = torch.cat([negative_image_embeds, image_embeds], dim=0)
+            image_embeds = torch.cat([uncond_image_embeds, image_embeds], dim=0)
+        # 新增：统一的条件编码处理 testEnd
 
         # 4. Prepare timesteps
         timesteps, num_inference_steps = retrieve_timesteps(
